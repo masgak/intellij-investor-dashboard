@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.20.2
+
+### ✨ New Features / 新功能
+
+- Added custom stock groups. Each group is its own tool window tab and can be created, renamed, and edited from Manage Groups / 新增自定义股票分组。每个分组会作为独立的工具窗口标签页，可在“管理分组”中创建、重命名和编辑
+- Added a default sort column and direction in Settings, used when the table has no manual sort / 在设置中新增默认排序列和排序方向，表格未手动排序时自动应用
+
+### 🐛 Bug Fixes / 错误修复
+
+- Fixed Sina ETF and LOF suggestions so on-exchange funds use the numeric code and duplicate rows are dropped / 修复新浪 ETF 与 LOF 搜索建议：场内基金使用数字代码，并去掉重复结果
+
 ## 1.20.1
 
 ### 🐛 Bug Fixes / 错误修复

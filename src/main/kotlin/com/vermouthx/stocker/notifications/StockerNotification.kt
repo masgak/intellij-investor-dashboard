@@ -45,32 +45,54 @@ object StockerNotification {
         return if (isChinese()) """
             <div style="${Styles.CONTAINER}">
                 <p style="${Styles.PARAGRAPH}">🎉 <strong>欢迎使用 Stocker v${v}！本次更新内容：</strong></p>
-                <h4 style="${Styles.HEADING}">🐛 v${v} 错误修复</h4>
+                <h4 style="${Styles.HEADING}">✨ v${v} 新功能</h4>
                 <ul style="margin: 0; padding-left: 18px;">
+                    <li style="${Styles.LIST_ITEM}">✨ <strong>自定义分组</strong>
+                        <ul style="${Styles.SUB_LIST}">
+                            <li>可创建自己的股票分组，每个分组会作为独立标签页显示</li>
+                            <li>在工具栏或工具菜单中打开“管理分组”，即可创建、重命名和编辑成员</li>
+                        </ul>
+                    </li>
+                    <li style="${Styles.LIST_ITEM}">✨ <strong>默认排序</strong>
+                        <ul style="${Styles.SUB_LIST}">
+                            <li>可在设置中指定默认排序列和方向，表格未手动排序时自动应用</li>
+                        </ul>
+                    </li>
                     <li style="${Styles.LIST_ITEM}">🐛 <strong>错误修复</strong>
                         <ul style="${Styles.SUB_LIST}">
-                            <li>修复 Windows 下表格右键删除菜单的竞态问题，在新版 UI 中删除自选股更稳定</li>
+                            <li>修复新浪 ETF 与 LOF 搜索建议的代码，并去掉重复结果</li>
                         </ul>
                     </li>
                 </ul>
                 <div style="${Styles.INFO_BOX}">
-                    <p style="margin: 0; font-size: 12px;">💡 <strong>说明：</strong>如果您之前在 Windows 新版 UI 中遇到右键删除偶发失效，请升级到此版本。</p>
+                    <p style="margin: 0; font-size: 12px;">💡 <strong>说明：</strong>分组只整理已在自选中的股票，删除分组不会把股票从市场列表里移除。</p>
                 </div>
                 <p style="${Styles.SMALL_TEXT}">💖 如果您觉得这个插件有帮助，请考虑点击下方的 <strong>Donate</strong> 按钮以支持开发。谢谢！📈</p>
             </div>
         """.trimIndent() else """
             <div style="${Styles.CONTAINER}">
                 <p style="${Styles.PARAGRAPH}">🎉 <strong>Welcome to Stocker v${v}! Here's what's new in this release:</strong></p>
-                <h4 style="${Styles.HEADING}">🐛 Bug Fixes in v${v}</h4>
+                <h4 style="${Styles.HEADING}">✨ What's new in v${v}</h4>
                 <ul style="margin: 0; padding-left: 18px;">
+                    <li style="${Styles.LIST_ITEM}">✨ <strong>Custom groups</strong>
+                        <ul style="${Styles.SUB_LIST}">
+                            <li>Create your own stock groups. Each group appears as its own tool window tab</li>
+                            <li>Open Manage Groups from the toolbar or Tools menu to create, rename, and edit members</li>
+                        </ul>
+                    </li>
+                    <li style="${Styles.LIST_ITEM}">✨ <strong>Default sort</strong>
+                        <ul style="${Styles.SUB_LIST}">
+                            <li>Choose a default sort column and direction in Settings. It applies when the table has no manual sort</li>
+                        </ul>
+                    </li>
                     <li style="${Styles.LIST_ITEM}">🐛 <strong>Bug Fixes</strong>
                         <ul style="${Styles.SUB_LIST}">
-                            <li>Fixed the Windows right-click delete race in the table popup menu so favorites can be removed reliably under the new UI</li>
+                            <li>Fixed Sina ETF and LOF suggestions so fund codes are correct and duplicate rows are dropped</li>
                         </ul>
                     </li>
                 </ul>
                 <div style="${Styles.INFO_BOX}">
-                    <p style="margin: 0; font-size: 12px;">💡 <strong>Note:</strong> Upgrade to this version if right-click delete was intermittently failing on Windows with the new UI enabled.</p>
+                    <p style="margin: 0; font-size: 12px;">💡 <strong>Note:</strong> Groups organize stocks that are already in your favorites. Deleting a group does not remove those stocks from their market lists.</p>
                 </div>
                 <p style="${Styles.SMALL_TEXT}">💖 If you find this plugin helpful, please consider clicking the <strong>Donate</strong> button below to support its development. Thank you! 📈</p>
             </div>
