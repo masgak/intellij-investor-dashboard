@@ -5,17 +5,22 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.content.ContentManager
 import com.intellij.util.messages.MessageBusConnection
 import com.vermouthx.stocker.StockerApp
 import com.vermouthx.stocker.StockerAppManager
 import com.vermouthx.stocker.enums.StockerMarketType
+import com.vermouthx.stocker.listeners.StockerGroupQuoteFilterListener
+import com.vermouthx.stocker.listeners.StockerGroupsChangedNotifier
 import com.vermouthx.stocker.listeners.StockerQuoteDeleteListener
 import com.vermouthx.stocker.listeners.StockerQuoteDeleteNotifier.*
 import com.vermouthx.stocker.listeners.StockerQuoteReloadListener
 import com.vermouthx.stocker.listeners.StockerQuoteReloadNotifier.*
 import com.vermouthx.stocker.listeners.StockerQuoteUpdateListener
 import com.vermouthx.stocker.listeners.StockerQuoteUpdateNotifier.*
+import com.vermouthx.stocker.settings.StockerSetting
 
 class StockerToolWindow : ToolWindowFactory {
 
@@ -25,9 +30,15 @@ class StockerToolWindow : ToolWindowFactory {
     private lateinit var tabViewMap: Map<StockerMarketType, StockerSimpleToolWindow>
     private lateinit var myApplication: StockerApp
     private val messageBusConnections = mutableListOf<MessageBusConnection>()
+    private val groupViews: MutableMap<String, StockerSimpleToolWindow> = mutableMapOf()
+    private val groupContents: MutableMap<String, Content> = mutableMapOf()
+    private val groupMessageBusConnections: MutableList<MessageBusConnection> = mutableListOf()
+    private var toolWindowRef: ToolWindow? = null
+    private var disposed = false
 
     override fun init(toolWindow: ToolWindow) {
         super.init(toolWindow)
+        toolWindowRef = toolWindow
         allView = StockerSimpleToolWindow()
         tabViewMap = mapOf(
             StockerMarketType.AShare to StockerSimpleToolWindow(),
@@ -35,14 +46,12 @@ class StockerToolWindow : ToolWindowFactory {
             StockerMarketType.USStocks to StockerSimpleToolWindow(),
             StockerMarketType.Crypto to StockerSimpleToolWindow()
         )
-        myApplication = StockerApp()
     }
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentManager = toolWindow.contentManager
         val contentFactory = ContentFactory.getInstance()
         
-        // Create a disposable for cleanup when tool window is closed
         val disposable = Disposer.newDisposable("StockerToolWindow")
         toolWindow.disposable.let { Disposer.register(it, disposable) }
         
@@ -66,28 +75,86 @@ class StockerToolWindow : ToolWindowFactory {
             false
         )
         contentManager.addContent(cryptoContent)
+        createGroupTabs(contentManager)
         this.subscribeMessage()
         
-        // Register cleanup when disposable is disposed
         Disposer.register(disposable) {
             cleanup()
         }
         
-        StockerAppManager.register(project, myApplication)
+        myApplication = StockerAppManager.register(project)
         myApplication.schedule()
     }
     
     private fun cleanup() {
+        disposed = true
         // Dispose all table views
         allView.tableView.dispose()
         tabViewMap.values.forEach { it.tableView.dispose() }
-        
+        groupViews.values.forEach { it.tableView.dispose() }
+        groupViews.clear()
+        groupContents.clear()
+
         // Disconnect all message bus connections
         messageBusConnections.forEach { it.disconnect() }
         messageBusConnections.clear()
+        groupMessageBusConnections.forEach { it.disconnect() }
+        groupMessageBusConnections.clear()
+    }
+
+    private fun createGroupTabs(contentManager: ContentManager) {
+        val setting = StockerSetting.instance
+        val contentFactory = ContentFactory.getInstance()
+        setting.customGroupNames().sorted().forEach { groupName ->
+            val groupView = StockerSimpleToolWindow()
+            groupViews[groupName] = groupView
+
+            val content = contentFactory.createContent(groupView.component, groupName, false)
+            contentManager.addContent(content)
+            groupContents[groupName] = content
+
+            val updateListener = StockerGroupQuoteFilterListener.Update(groupView.tableView, groupName)
+            val deleteListener = StockerGroupQuoteFilterListener.Delete(groupView.tableView)
+            val reloadListener = StockerGroupQuoteFilterListener.Reload(groupView.tableView)
+
+            groupMessageBusConnections.add(messageBus.connect().apply {
+                subscribe(STOCK_ALL_QUOTE_UPDATE_TOPIC, updateListener)
+            })
+            groupMessageBusConnections.add(messageBus.connect().apply {
+                subscribe(STOCK_ALL_QUOTE_DELETE_TOPIC, deleteListener)
+            })
+            groupMessageBusConnections.add(messageBus.connect().apply {
+                subscribe(STOCK_ALL_QUOTE_RELOAD_TOPIC, reloadListener)
+            })
+        }
+    }
+
+    private fun rebuildGroupTabs(contentManager: ContentManager) {
+        groupContents.values.toList().forEach { contentManager.removeContent(it, true) }
+        groupContents.clear()
+
+        groupViews.values.forEach { it.tableView.dispose() }
+        groupViews.clear()
+
+        groupMessageBusConnections.forEach { it.disconnect() }
+        groupMessageBusConnections.clear()
+
+        createGroupTabs(contentManager)
     }
 
     private fun subscribeMessage() {
+        messageBusConnections.add(messageBus.connect().apply {
+            subscribe(StockerGroupsChangedNotifier.STOCKER_GROUPS_CHANGED_TOPIC, object : StockerGroupsChangedNotifier {
+                override fun groupsChanged() {
+                    val tw = toolWindowRef ?: return
+                    ApplicationManager.getApplication().invokeLater {
+                        if (disposed) return@invokeLater
+                        rebuildGroupTabs(tw.contentManager)
+                    }
+                }
+            })
+        })
+
         // Create and store connections for proper disposal
         messageBusConnections.add(messageBus.connect().apply {
             subscribe(STOCK_ALL_QUOTE_UPDATE_TOPIC, StockerQuoteUpdateListener(allView.tableView))

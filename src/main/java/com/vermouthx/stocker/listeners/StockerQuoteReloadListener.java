@@ -2,6 +2,7 @@ package com.vermouthx.stocker.listeners;
 
 import com.vermouthx.stocker.views.StockerTableView;
 
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 
 public class StockerQuoteReloadListener implements StockerQuoteReloadNotifier {
@@ -13,11 +14,21 @@ public class StockerQuoteReloadListener implements StockerQuoteReloadNotifier {
 
     @Override
     public void clear() {
+        if (SwingUtilities.isEventDispatchThread()) {
+            clearRows();
+        } else {
+            SwingUtilities.invokeLater(this::clearRows);
+        }
+    }
+
+    private void clearRows() {
+        if (myTableView.isDisposed()) {
+            return;
+        }
         DefaultTableModel tableModel = myTableView.getTableModel();
-        synchronized (myTableView.getTableModel()) {
-            // clear all table rows
+        synchronized (tableModel) {
             tableModel.setRowCount(0);
-            myTableView.clearSortState();
+            myTableView.reapplySortAfterDataChange();
         }
     }
 }

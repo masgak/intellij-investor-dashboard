@@ -20,4 +20,12 @@ class StockerSettingState {
     var customStockNames: MutableMap<String, String> = mutableMapOf()
     var stockCostPrices: MutableMap<String, Double> = mutableMapOf()
     var stockHoldings: MutableMap<String, Int> = mutableMapOf()
+    var defaultSortColumn: String = "CHANGE_PERCENT"
+    var defaultSortDirection: String = "DESCENDING"
+    var customGroups: MutableList<StockerCustomGroup> = mutableListOf()
+}
+
+class StockerCustomGroup {
+    var name: String = ""
+    var codes: MutableList<String> = mutableListOf()
 }

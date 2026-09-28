@@ -72,6 +72,10 @@ public class StockerTableView implements Disposable {
 
     private volatile boolean disposed = false;
 
+    public boolean isDisposed() {
+        return disposed;
+    }
+
     public StockerTableView() {
         tableViews.add(this);
         syncColorPatternSetting();
@@ -685,7 +689,6 @@ public class StockerTableView implements Disposable {
     public void clearSortState() {
         currentSortState = StockerSortState.NONE;
         lastSortColumn = -1;
-        // Clear backup data when sort is cleared externally
         if (sortBackupData != null) {
             sortBackupData.clear();
             sortBackupData = null;
@@ -696,6 +699,78 @@ public class StockerTableView implements Disposable {
                 tbBody.getTableHeader().repaint();
             }
         }
+    }
+
+    /**
+     * Re-applies the appropriate sort after data has changed externally.
+     * If user has an active manual sort, re-apply it. If in initial state, apply
+     * default sort from settings. If user explicitly deselected sort, respect that.
+     */
+    public void reapplySortAfterDataChange() {
+        if (sortBackupData != null) {
+            sortBackupData.clear();
+            sortBackupData = null;
+        }
+
+        int targetColumn = lastSortColumn;
+        StockerSortState targetState = currentSortState;
+
+        if (targetState == StockerSortState.NONE || targetColumn == -1) {
+            if (lastSortColumn == -1) {
+                StockerSetting setting = StockerSetting.Companion.getInstance();
+                String defaultColName = setting.getDefaultSortColumn();
+                if (defaultColName != null && !defaultColName.isEmpty()) {
+                    StockerTableColumn col = StockerTableColumn.Companion.fromName(defaultColName);
+                    if (col != null) {
+                        int viewColumn = findViewColumnByEnumName(defaultColName);
+                        if (viewColumn != -1) {
+                            targetColumn = viewColumn;
+                            targetState = setting.getDefaultSortDirectionEnum();
+                        }
+                    }
+                }
+            }
+        }
+
+        if (targetColumn != -1 && targetState != StockerSortState.NONE) {
+            applySort(targetColumn, targetState);
+        }
+    }
+
+    private void applySort(int column, StockerSortState state) {
+        if (state == StockerSortState.NONE || column < 0) {
+            return;
+        }
+        lastSortColumn = column;
+        currentSortState = state;
+        if (headerRenderer != null) {
+            headerRenderer.setSortState(column, state);
+            if (tbBody != null && tbBody.getTableHeader() != null) {
+                tbBody.getTableHeader().repaint();
+            }
+        }
+        String columnName = tbBody.getColumnName(column);
+        sortTableDataOptimized(columnName, state);
+    }
+
+    private int findViewColumnByEnumName(String enumName) {
+        for (int i = 0; i < tbBody.getColumnCount(); i++) {
+            Object identifier = tbBody.getColumnModel().getColumn(i).getIdentifier();
+            if (enumName.equals(identifier)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static void refreshAllSorts() {
+        SwingUtilities.invokeLater(() -> {
+            synchronized (tableViews) {
+                for (StockerTableView view : tableViews) {
+                    view.reapplySortAfterDataChange();
+                }
+            }
+        });
     }
 
     private void sortByColumn(int column) {

@@ -3,8 +3,10 @@ package com.vermouthx.stocker.actions
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.vermouthx.stocker.StockerAppManager
 import com.vermouthx.stocker.StockerBundle
+import com.vermouthx.stocker.listeners.StockerGroupsChangedNotifier
 import com.vermouthx.stocker.settings.StockerSetting
 
 class StockerResetAction : AnAction() {
@@ -25,6 +27,11 @@ class StockerResetAction : AnAction() {
         setting.hkStocksList.clear()
         setting.usStocksList.clear()
         setting.cryptoList.clear()
+
+        setting.clearCustomGroups()
+        ApplicationManager.getApplication().messageBus
+            .syncPublisher(StockerGroupsChangedNotifier.STOCKER_GROUPS_CHANGED_TOPIC)
+            .groupsChanged()
 
         myApplication?.schedule()
     }

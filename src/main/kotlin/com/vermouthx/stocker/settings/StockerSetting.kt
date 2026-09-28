@@ -10,6 +10,7 @@ import com.vermouthx.stocker.enums.StockerQuoteColorPattern
 import com.vermouthx.stocker.enums.StockerQuoteProvider
 import com.vermouthx.stocker.enums.StockerTableColumn
 import com.vermouthx.stocker.utils.StockerPinyinUtil
+import com.vermouthx.stocker.views.StockerTableView
 
 @State(name = "Stocker", storages = [Storage("stocker-config.xml")])
 class StockerSetting : PersistentStateComponent<StockerSettingState> {
@@ -89,28 +90,54 @@ class StockerSetting : PersistentStateComponent<StockerSettingState> {
             log.info("Stocker refresh interval set to $value")
         }
 
+    var defaultSortColumn: String
+        get() = myState.defaultSortColumn
+        set(value) {
+            myState.defaultSortColumn = value
+            StockerTableView.refreshAllSorts()
+        }
+
+    var defaultSortDirection: String
+        get() = myState.defaultSortDirection
+        set(value) {
+            myState.defaultSortDirection = value
+            StockerTableView.refreshAllSorts()
+        }
+
+    fun getDefaultSortDirectionEnum(): com.vermouthx.stocker.enums.StockerSortState {
+        return try {
+            com.vermouthx.stocker.enums.StockerSortState.valueOf(defaultSortDirection)
+        } catch (_: IllegalArgumentException) {
+            com.vermouthx.stocker.enums.StockerSortState.DESCENDING
+        }
+    }
+
     var aShareList: MutableList<String>
         get() = myState.aShareList
         set(value) {
             myState.aShareList = value
+            pruneGroupMembers()
         }
 
     var hkStocksList: MutableList<String>
         get() = myState.hkStocksList
         set(value) {
             myState.hkStocksList = value
+            pruneGroupMembers()
         }
 
     var usStocksList: MutableList<String>
         get() = myState.usStocksList
         set(value) {
             myState.usStocksList = value
+            pruneGroupMembers()
         }
 
     var cryptoList: MutableList<String>
         get() = myState.cryptoList
         set(value) {
             myState.cryptoList = value
+            pruneGroupMembers()
         }
 
     var customStockNames: MutableMap<String, String>
@@ -133,6 +160,76 @@ class StockerSetting : PersistentStateComponent<StockerSettingState> {
 
     val allStockListSize: Int
         get() = aShareList.size + hkStocksList.size + usStocksList.size + cryptoList.size
+
+    fun customGroupNames(): List<String> = myState.customGroups.map { it.name }
+
+    fun copyCustomGroups(): Map<String, List<String>> {
+        return myState.customGroups.associate { it.name to it.codes.toList() }
+    }
+
+    fun replaceCustomGroups(groups: Map<String, List<String>>) {
+        myState.customGroups = groups.map { (name, codes) ->
+            StockerCustomGroup().apply {
+                this.name = name
+                this.codes = codes.toMutableList()
+            }
+        }.toMutableList()
+    }
+
+    fun clearCustomGroups() {
+        myState.customGroups.clear()
+    }
+
+    fun createGroup(name: String): Boolean {
+        if (name.isBlank() || findGroup(name) != null) return false
+        myState.customGroups.add(StockerCustomGroup().apply {
+            this.name = name
+            this.codes = mutableListOf()
+        })
+        return true
+    }
+
+    fun deleteGroup(name: String): Boolean {
+        return myState.customGroups.removeAll { it.name == name }
+    }
+
+    fun renameGroup(oldName: String, newName: String): Boolean {
+        if (newName.isBlank() || oldName == newName) return false
+        if (findGroup(newName) != null) return false
+        val group = findGroup(oldName) ?: return false
+        group.name = newName
+        return true
+    }
+
+    fun addToGroup(groupName: String, code: String): Boolean {
+        val members = findGroup(groupName)?.codes ?: return false
+        if (members.contains(code)) return false
+        return members.add(code)
+    }
+
+    fun removeFromGroup(groupName: String, code: String): Boolean {
+        val members = findGroup(groupName)?.codes ?: return false
+        return members.remove(code)
+    }
+
+    fun getGroupMembers(groupName: String): List<String> {
+        val codes = findGroup(groupName)?.codes ?: return emptyList()
+        return codes.filter { containsCode(it) }
+    }
+
+    fun getGroupsForCode(code: String): List<String> {
+        return myState.customGroups.filter { it.codes.contains(code) }.map { it.name }
+    }
+
+    private fun findGroup(name: String): StockerCustomGroup? {
+        return myState.customGroups.firstOrNull { it.name == name }
+    }
+
+    private fun pruneGroupMembers() {
+        myState.customGroups.forEach { group ->
+            group.codes.removeAll { !containsCode(it) }
+        }
+    }
 
     fun setCustomName(code: String, customName: String) {
         customStockNames[code] = customName
@@ -238,6 +335,9 @@ class StockerSetting : PersistentStateComponent<StockerSettingState> {
                     cryptoList.remove(code)
                 }
             }
+        }
+        if (!containsCode(code)) {
+            myState.customGroups.forEach { it.codes.remove(code) }
         }
     }
 

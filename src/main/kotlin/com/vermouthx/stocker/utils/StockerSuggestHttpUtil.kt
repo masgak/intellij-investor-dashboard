@@ -84,18 +84,20 @@ object StockerSuggestHttpUtil {
                     result.add(StockerSuggestion(columns[3].uppercase(), columns[4], StockerMarketType.AShare))
                 }
 
-                "22" -> {
-                    val code = columns[3].replace("of", "")
-                    when {
-                        code.startsWith("15") || code.startsWith("16") || code.startsWith("18") -> result.add(
-                            StockerSuggestion("SZ$code", columns[4], StockerMarketType.AShare)
-                        )
+                // Type 22 = on-exchange ETF, type 203 = on-exchange LOF. Both share the same
+                // numeric code space (SZ 15x/16x/18x, SH 50x/51x) and field layout, and Sina
+                // reports the numeric code in columns[2] for both types.
+                "22", "203" -> {
+                    val code = columns[2]
+                    val candidate = when {
+                        code.startsWith("15") || code.startsWith("16") || code.startsWith("18") -> "SZ$code"
 
-                        code.startsWith("50") || code.startsWith("51") -> result.add(
-                            StockerSuggestion(
-                                "SH$code", columns[4], StockerMarketType.AShare
-                            )
-                        )
+                        code.startsWith("50") || code.startsWith("51") -> "SH$code"
+
+                        else -> null
+                    }
+                    if (candidate != null) {
+                        result.add(StockerSuggestion(candidate, columns[4], StockerMarketType.AShare))
                     }
                 }
 
@@ -112,7 +114,9 @@ object StockerSuggestHttpUtil {
                 "81" -> result.add(StockerSuggestion(columns[3].uppercase(), columns[4], StockerMarketType.AShare))
             }
         }
-        return result
+        // Sina returns both a type-22 and a type-203 row for the same ETF;
+        // drop duplicate codes while preserving the first occurrence.
+        return result.distinctBy { it.code }
     }
     
     /**

@@ -13,6 +13,7 @@ import com.vermouthx.stocker.enums.StockerTableColumn
 import com.vermouthx.stocker.settings.StockerSetting
 import com.vermouthx.stocker.views.StockerTableView
 import javax.swing.JCheckBox
+import javax.swing.JComboBox
 import javax.swing.JLabel
 
 class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.name")) {
@@ -50,6 +51,9 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
     private var holdingsCheckBox: JCheckBox? = null
     private var netProfitCheckBox: JCheckBox? = null
     private var columnWarningLabel: JLabel? = null
+    private var defaultSortColumn: String = setting.defaultSortColumn
+    private var defaultSortDirection: String = setting.defaultSortDirection
+    private var sortDirectionComboBox: JComboBox<String>? = null
 
     companion object {
         private val LANGUAGE_CODES = listOf("", "en", "zh_CN")
@@ -248,6 +252,43 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                 }
             }
 
+            group(StockerBundle.message("settings.group.sort")) {
+                row {
+                    label(StockerBundle.message("settings.default.sort.column"))
+                        .widthGroup("labels")
+                    comboBox(listOf("") + StockerTableColumn.entries.map { it.name }, createSortColumnRenderer())
+                        .bindItem(
+                            { defaultSortColumn },
+                            { newValue ->
+                                defaultSortColumn = newValue ?: ""
+                                sortDirectionComboBox?.isEnabled = !defaultSortColumn.isEmpty()
+                            }
+                        )
+                        .widthGroup("comboboxes")
+                }.layout(RowLayout.LABEL_ALIGNED)
+
+                row {
+                    label(StockerBundle.message("settings.default.sort.direction"))
+                        .widthGroup("labels")
+                    sortDirectionComboBox = comboBox(
+                        listOf("DESCENDING", "ASCENDING"),
+                        SimpleListCellRenderer.create<String>("") {
+                            when (it) {
+                                "ASCENDING" -> StockerBundle.message("settings.sort.ascending")
+                                "DESCENDING" -> StockerBundle.message("settings.sort.descending")
+                                else -> it
+                            }
+                        }
+                    )
+                        .bindItem(::defaultSortDirection.toNullableProperty())
+                        .widthGroup("comboboxes")
+                        .applyToComponent {
+                            isEnabled = defaultSortColumn.isNotEmpty()
+                        }
+                        .component
+                }.layout(RowLayout.LABEL_ALIGNED)
+            }
+
             onApply {
                 val visibleColumns = buildVisibleColumns()
                 val columnsModified = visibleColumns != setting.visibleTableColumns
@@ -263,6 +304,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                 setting.displayNameWithPinyin = displayNameWithPinyin
                 setting.visibleTableColumns = visibleColumns
                 setting.languageOverride = languageOverride
+                setting.defaultSortColumn = defaultSortColumn
+                setting.defaultSortDirection = defaultSortDirection
 
                 if (columnsModified || languageModified) {
                     StockerTableView.refreshAllColumnVisibility()
@@ -280,7 +323,9 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                         colorPattern != setting.quoteColorPattern ||
                         displayNameWithPinyin != setting.displayNameWithPinyin ||
                         languageOverride != setting.languageOverride ||
-                        buildVisibleColumns() != setting.visibleTableColumns
+                        buildVisibleColumns() != setting.visibleTableColumns ||
+                        defaultSortColumn != setting.defaultSortColumn ||
+                        defaultSortDirection != setting.defaultSortDirection
             }
             onReset {
                 selectedProvider = setting.quoteProvider
@@ -300,6 +345,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                 showCostPrice = setting.isTableColumnVisible(StockerTableColumn.COST_PRICE)
                 showHoldings = setting.isTableColumnVisible(StockerTableColumn.HOLDINGS)
                 showNetProfit = setting.isTableColumnVisible(StockerTableColumn.NET_PROFIT)
+                defaultSortColumn = setting.defaultSortColumn
+                defaultSortDirection = setting.defaultSortDirection
                 columnWarningLabel?.isVisible = false
             }
         }
@@ -346,6 +393,12 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
             columnWarningLabel?.isVisible = false
         }
     }
+
+    private fun createSortColumnRenderer() =
+        SimpleListCellRenderer.create<String>("") { colName ->
+            if (colName.isEmpty()) StockerBundle.message("settings.default.sort.column.none")
+            else StockerTableColumn.fromName(colName)?.title ?: colName
+        }
 
     private fun refreshAllWindows() {
         StockerAppManager.getAllApplications().forEach { app ->

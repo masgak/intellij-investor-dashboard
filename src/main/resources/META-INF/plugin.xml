@@ -57,6 +57,13 @@
                     description="%action.remove.all.favorite.stocks.description"
                     icon="AllIcons.General.Reset">
             </action>
+            <separator/>
+            <action class="com.vermouthx.stocker.actions.StockerGroupManageAction"
+                    id="com.vermouthx.stocker.actions.StockerGroupManageAction"
+                    text="%action.manage.groups"
+                    description="%action.manage.groups.description"
+                    icon="AllIcons.Actions.GroupBy">
+            </action>
         </group>
     </actions>
 </idea-plugin>
