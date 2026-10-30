@@ -1,5 +1,9 @@
 package com.vermouthx.stocker.settings
 
+import com.intellij.credentialStore.CredentialAttributes
+import com.intellij.credentialStore.Credentials
+import com.intellij.credentialStore.generateServiceName
+import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.State
@@ -69,19 +73,41 @@ class StockerSetting : PersistentStateComponent<StockerSettingState> {
         get() {
             val stored = myState.visibleTableColumns
             if (stored.isEmpty()) return StockerTableColumn.defaultVisibleNames()
-            if (stored.all { name -> StockerTableColumn.fromName(name) != null }) return stored
+            if (stored.all { name -> StockerTableColumn.fromName(name) != null }) {
+                return withProfileColumns(stored)
+            }
             val migrated = stored.mapNotNull { StockerTableColumn.migrateLocalizedTitle(it) }
             if (migrated.isNotEmpty()) {
                 myState.visibleTableColumns = migrated.toMutableList()
                 log.info("Migrated visibleTableColumns from localized titles to enum names: $migrated")
-                return migrated
+                return withProfileColumns(migrated)
             }
             return StockerTableColumn.defaultVisibleNames()
         }
         set(value) {
             myState.visibleTableColumns = value.toMutableList()
+            myState.profileColumnsAdded = true
             log.info("Stocker visible table columns updated: $value")
         }
+
+    private fun withProfileColumns(stored: List<String>): List<String> {
+        if (myState.profileColumnsAdded) {
+            return stored
+        }
+        val updated = stored.toMutableList()
+        val nameIndex = updated.indexOf(StockerTableColumn.NAME.name)
+        var insertAt = if (nameIndex >= 0) nameIndex + 1 else updated.size
+        if (StockerTableColumn.INDUSTRY.name !in updated) {
+            updated.add(insertAt, StockerTableColumn.INDUSTRY.name)
+        }
+        insertAt = updated.indexOf(StockerTableColumn.INDUSTRY.name) + 1
+        if (StockerTableColumn.BOARD.name !in updated) {
+            updated.add(insertAt, StockerTableColumn.BOARD.name)
+        }
+        myState.visibleTableColumns = updated
+        myState.profileColumnsAdded = true
+        return updated
+    }
 
     var refreshInterval: Long
         get() = myState.refreshInterval
@@ -341,12 +367,242 @@ class StockerSetting : PersistentStateComponent<StockerSettingState> {
         }
     }
 
+    var screenAuto: Boolean
+        get() = myState.screenAuto
+        set(value) {
+            myState.screenAuto = value
+        }
+
+    var screenStrategy: String
+        get() = myState.screenStrategy.ifBlank { "TANG" }
+        set(value) {
+            myState.screenStrategy = value
+        }
+
+    var screenLastDay: String
+        get() = myState.screenLastDay
+        set(value) {
+            myState.screenLastDay = value
+        }
+
+    var screenRanAt: Long
+        get() = myState.screenRanAt
+        set(value) {
+            myState.screenRanAt = value
+        }
+
+    fun savedScreenRows(): List<com.vermouthx.stocker.entities.StockerScreenRow> {
+        return myState.screenPicks.mapNotNull { it.toRow() }
+    }
+
+    fun replaceScreenPicks(picks: List<StockerScreenPickState>) {
+        myState.screenPicks = picks.toMutableList()
+    }
+
+    var aiBaseUrl: String
+        get() = myState.aiBaseUrl.ifBlank { "https://api.x.ai/v1" }
+        set(value) {
+            myState.aiBaseUrl = value.trim().ifBlank { "https://api.x.ai/v1" }
+        }
+
+    var aiThinking: String
+        get() = myState.aiThinking.ifBlank { "medium" }
+        set(value) {
+            myState.aiThinking = value
+        }
+
+    var aiModels: List<String>
+        get() = myState.aiModels.toList()
+        set(value) {
+            myState.aiModels = value.map { it.trim() }.filter { it.isNotEmpty() }.distinct().toMutableList()
+            if (aiActiveModel !in myState.aiModels) {
+                myState.aiActiveModel = myState.aiModels.firstOrNull().orEmpty()
+            }
+        }
+
+    var aiActiveModel: String
+        get() = myState.aiActiveModel.ifBlank { myState.aiModels.firstOrNull().orEmpty() }
+        set(value) {
+            myState.aiActiveModel = value.trim()
+        }
+
+    var usmartChannel: String
+        get() = myState.usmartChannel
+        set(value) {
+            myState.usmartChannel = value.trim()
+        }
+
+    var usmartAreaCode: String
+        get() = myState.usmartAreaCode.ifBlank { "86" }
+        set(value) {
+            myState.usmartAreaCode = value.trim().ifBlank { "86" }
+        }
+
+    var usmartAccount: String
+        get() = myState.usmartAccount
+        set(value) {
+            myState.usmartAccount = value.trim()
+        }
+
+    var usmartPassword: String
+        get() = PasswordSafe.instance.getPassword(usmartAttributes("password")).orEmpty()
+        set(value) {
+            storeSecret(usmartAttributes("password"), value)
+        }
+
+    var usmartPrivateKey: String
+        get() = PasswordSafe.instance.getPassword(usmartAttributes("private-key")).orEmpty()
+        set(value) {
+            storeSecret(usmartAttributes("private-key"), value)
+        }
+
+    var usmartPublicKey: String
+        get() = PasswordSafe.instance.getPassword(usmartAttributes("public-key")).orEmpty()
+        set(value) {
+            storeSecret(usmartAttributes("public-key"), value)
+        }
+
+    private fun usmartAttributes(item: String): CredentialAttributes {
+        return CredentialAttributes(generateServiceName("Stocker", "usmart-$item"))
+    }
+
+    private fun storeSecret(attributes: CredentialAttributes, value: String) {
+        if (value.isBlank()) {
+            PasswordSafe.instance.set(attributes, null)
+        } else {
+            PasswordSafe.instance.set(attributes, Credentials("stocker", value))
+        }
+    }
+
+    var aiApiKey: String
+        get() = PasswordSafe.instance.getPassword(aiKeyAttributes()).orEmpty()
+        set(value) {
+            val attributes = aiKeyAttributes()
+            if (value.isBlank()) {
+                PasswordSafe.instance.set(attributes, null)
+            } else {
+                PasswordSafe.instance.set(attributes, Credentials("stocker", value))
+            }
+        }
+
+    private fun aiKeyAttributes(): CredentialAttributes {
+        return CredentialAttributes(generateServiceName("Stocker", "screen-ai"))
+    }
+
+    var paperCash: Double
+        get() = myState.paperCash
+        set(value) {
+            myState.paperCash = value
+        }
+
+    var paperInitialCash: Double
+        get() = myState.paperInitialCash
+        set(value) {
+            myState.paperInitialCash = value
+        }
+
+    fun paperPositions(): List<StockerPaperPosition> = myState.paperPositions.toList()
+
+    fun paperSellableShares(code: String): Int {
+        val existing = myState.paperPositions.firstOrNull { it.code == code } ?: return 0
+        return (existing.shares - paperLockedShares(existing)).coerceAtLeast(0)
+    }
+
+    fun paperBuy(code: String, name: String, shares: Int, price: Double): String? {
+        if (shares <= 0 || price <= 0.0) {
+            return "invalid"
+        }
+        val cost = shares * price
+        if (cost > myState.paperCash + 1e-6) {
+            return "cash"
+        }
+        myState.paperCash -= cost
+        val existing = myState.paperPositions.firstOrNull { it.code == code }
+        if (existing == null) {
+            myState.paperPositions.add(StockerPaperPosition().apply {
+                this.code = code
+                this.name = name
+                this.shares = shares
+                this.costPrice = price
+                recordPaperBuy(this, shares)
+            })
+        } else {
+            val total = existing.shares * existing.costPrice + cost
+            existing.shares += shares
+            existing.costPrice = total / existing.shares
+            if (name.isNotBlank()) {
+                existing.name = name
+            }
+            recordPaperBuy(existing, shares)
+        }
+        return null
+    }
+
+    fun paperSell(code: String, shares: Int, price: Double): String? {
+        val existing = myState.paperPositions.firstOrNull { it.code == code } ?: return "position"
+        if (shares <= 0 || price <= 0.0) {
+            return "invalid"
+        }
+        if (shares > paperSellableShares(code)) {
+            return if (paperLockedShares(existing) > 0) "t1" else "invalid"
+        }
+        myState.paperCash += shares * price
+        existing.shares -= shares
+        if (existing.shares == 0) {
+            myState.paperPositions.remove(existing)
+        }
+        return null
+    }
+
+    private fun recordPaperBuy(position: StockerPaperPosition, shares: Int) {
+        if (!isPaperT1Market(position.code)) {
+            return
+        }
+        val today = paperTradeDay()
+        if (position.boughtTodayDate != today) {
+            position.boughtToday = 0
+            position.boughtTodayDate = today
+        }
+        position.boughtToday += shares
+    }
+
+    private fun paperLockedShares(position: StockerPaperPosition): Int {
+        if (!isPaperT1Market(position.code)) {
+            return 0
+        }
+        return if (position.boughtTodayDate == paperTradeDay()) position.boughtToday else 0
+    }
+
+    private fun isPaperT1Market(code: String): Boolean {
+        if (marketOf(code) == StockerMarketType.AShare) {
+            return true
+        }
+        val upper = code.uppercase()
+        return upper.startsWith("SH") || upper.startsWith("SZ") || upper.startsWith("BJ")
+    }
+
+    private fun paperTradeDay(): String {
+        return java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).toString()
+    }
+
+    fun paperReset(amount: Double) {
+        myState.paperPositions.clear()
+        myState.paperInitialCash = amount
+        myState.paperCash = amount
+    }
+
     override fun getState(): StockerSettingState {
         return myState
     }
 
     override fun loadState(state: StockerSettingState) {
         myState = state
+        if (!myState.defaultSortMigratedToManual) {
+            if (myState.defaultSortColumn == "CHANGE_PERCENT") {
+                myState.defaultSortColumn = ""
+            }
+            myState.defaultSortMigratedToManual = true
+        }
     }
 
 }

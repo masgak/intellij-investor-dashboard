@@ -24,6 +24,7 @@ import javax.swing.event.PopupMenuListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -32,6 +33,7 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class StockerTableView implements Disposable {
@@ -69,14 +71,23 @@ public class StockerTableView implements Disposable {
     private List<Object[]> sortBackupData = null;
     private String popupTargetCode = null;
     private String popupTargetName = null;
+    private String rowFilterText = "";
+    private TableRowSorter<DefaultTableModel> rowSorter;
 
     private volatile boolean disposed = false;
+    /** When set to a non-A-share market, industry and board columns are hidden entirely. */
+    private final StockerMarketType marketScope;
 
     public boolean isDisposed() {
         return disposed;
     }
 
     public StockerTableView() {
+        this(null);
+    }
+
+    public StockerTableView(StockerMarketType marketScope) {
+        this.marketScope = marketScope;
         tableViews.add(this);
         syncColorPatternSetting();
         initPane();
@@ -253,6 +264,8 @@ public class StockerTableView implements Disposable {
 
     private static final String codeColumn = StockerTableColumn.SYMBOL.name();
     private static final String nameColumn = StockerTableColumn.NAME.name();
+    private static final String industryColumn = StockerTableColumn.INDUSTRY.name();
+    private static final String boardColumn = StockerTableColumn.BOARD.name();
     private static final String currentColumn = StockerTableColumn.CURRENT.name();
     private static final String openingColumn = StockerTableColumn.OPENING.name();
     private static final String closeColumn = StockerTableColumn.CLOSE.name();
@@ -298,7 +311,7 @@ public class StockerTableView implements Disposable {
             }
         });
 
-        tbModel.setColumnIdentifiers(new String[]{codeColumn, nameColumn, currentColumn, openingColumn, closeColumn, lowColumn, highColumn, changeColumn, percentColumn, costPriceColumn, holdingsColumn, netProfitColumn});
+        tbModel.setColumnIdentifiers(new String[]{codeColumn, nameColumn, industryColumn, boardColumn, currentColumn, openingColumn, closeColumn, lowColumn, highColumn, changeColumn, percentColumn, costPriceColumn, holdingsColumn, netProfitColumn});
 
         tbBody.setModel(tbModel);
         tbBody.setAutoCreateColumnsFromModel(false);
@@ -348,7 +361,86 @@ public class StockerTableView implements Disposable {
         });
 
         applyColumnVisibility();
+        installRowFilter();
         tbPane.setViewportView(tbBody);
+    }
+
+    /**
+     * Hides rows whose code or name does not contain the text. Empty text shows every row.
+     */
+    public void setRowFilterText(String text) {
+        rowFilterText = text == null ? "" : text.trim();
+        applyRowFilter();
+    }
+
+    private void installRowFilter() {
+        rowSorter = new TableRowSorter<>(tbModel);
+        for (int i = 0; i < tbModel.getColumnCount(); i++) {
+            rowSorter.setSortable(i, false);
+        }
+        tbBody.setRowSorter(rowSorter);
+        applyRowFilter();
+    }
+
+    private void applyRowFilter() {
+        if (rowSorter == null) {
+            return;
+        }
+        if (rowFilterText.isEmpty()) {
+            rowSorter.setRowFilter(null);
+            return;
+        }
+        String query = rowFilterText.toLowerCase(Locale.ROOT);
+        rowSorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
+            @Override
+            public boolean include(Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                String code = cellText(entry, 0);
+                String name = cellText(entry, 1);
+                String industry = cellText(entry, 2);
+                String board = cellText(entry, 3);
+                if (matches(code, query) || matches(name, query) || matches(stripCodePrefix(code), query)
+                        || matches(industry, query) || matches(board, query)) {
+                    return true;
+                }
+                return matches(StockerPinyinUtil.INSTANCE.toPinyin(name), query);
+            }
+        });
+    }
+
+    private static String cellText(RowFilter.Entry<? extends DefaultTableModel, ? extends Integer> entry, int column) {
+        Object value = entry.getValue(column);
+        return value == null ? "" : value.toString();
+    }
+
+    private static boolean matches(String value, String query) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(query);
+    }
+
+    private static String stripCodePrefix(String code) {
+        if (code == null || code.length() < 3) {
+            return code == null ? "" : code;
+        }
+        String upper = code.toUpperCase(Locale.ROOT);
+        for (String prefix : new String[]{"SH", "SZ", "BJ", "HK", "US", "BTC"}) {
+            if (upper.startsWith(prefix) && upper.length() > prefix.length()) {
+                return code.substring(prefix.length());
+            }
+        }
+        return code;
+    }
+
+    private int toModelRow(int viewRow) {
+        if (viewRow < 0) {
+            return -1;
+        }
+        if (tbBody.getRowSorter() == null) {
+            return viewRow;
+        }
+        try {
+            return tbBody.convertRowIndexToModel(viewRow);
+        } catch (IndexOutOfBoundsException ex) {
+            return -1;
+        }
     }
 
     private void handleTableMouseEvent(MouseEvent event, JPopupMenu rowPopupMenu) {
@@ -360,8 +452,9 @@ public class StockerTableView implements Disposable {
 
         if (row != -1 && (event.isPopupTrigger() || SwingUtilities.isRightMouseButton(event))) {
             tbBody.setRowSelectionInterval(row, row);
-            popupTargetCode = getStringValueAt(row, 0);
-            popupTargetName = getStringValueAt(row, 1);
+            int modelRow = toModelRow(row);
+            popupTargetCode = getStringValueAt(modelRow, 0);
+            popupTargetName = getStringValueAt(modelRow, 1);
         }
 
         if (event.isPopupTrigger() && row != -1) {
@@ -422,8 +515,9 @@ public class StockerTableView implements Disposable {
                 clearPopupTarget();
                 return;
             }
-            code = getStringValueAt(selectedRow, 0);
-            name = getStringValueAt(selectedRow, 1);
+            int modelRow = toModelRow(selectedRow);
+            code = getStringValueAt(modelRow, 0);
+            name = getStringValueAt(modelRow, 1);
         }
         if (code == null) {
             clearPopupTarget();
@@ -440,6 +534,9 @@ public class StockerTableView implements Disposable {
     }
 
     private String getStringValueAt(int row, int column) {
+        if (row < 0 || row >= tbModel.getRowCount()) {
+            return null;
+        }
         Object value = tbModel.getValueAt(row, column);
         return value == null ? null : value.toString();
     }
@@ -461,6 +558,13 @@ public class StockerTableView implements Disposable {
         });
     }
 
+    private boolean shouldHideProfileColumn(String columnName) {
+        if (marketScope == null || marketScope == StockerMarketType.AShare) {
+            return false;
+        }
+        return industryColumn.equals(columnName) || boardColumn.equals(columnName);
+    }
+
     private void applyColumnVisibility() {
         StockerSetting setting = StockerSetting.Companion.getInstance();
         List<String> visibleColumns = setting.getVisibleTableColumns();
@@ -469,7 +573,7 @@ public class StockerTableView implements Disposable {
         updateLocalizedHeaders();
 
         for (String columnName : allColumnNames) {
-            if (!visibleColumns.contains(columnName)) {
+            if (!visibleColumns.contains(columnName) || shouldHideProfileColumn(columnName)) {
                 TableColumn tableColumn = getColumnIfPresent(columnName);
                 if (tableColumn != null) {
                     tbBody.removeColumn(tableColumn);
@@ -587,6 +691,14 @@ public class StockerTableView implements Disposable {
         TableColumn name = getColumnIfPresent(nameColumn);
         if (name != null) {
             name.setCellRenderer(defaultRenderer);
+        }
+        TableColumn industry = getColumnIfPresent(industryColumn);
+        if (industry != null) {
+            industry.setCellRenderer(defaultRenderer);
+        }
+        TableColumn board = getColumnIfPresent(boardColumn);
+        if (board != null) {
+            board.setCellRenderer(defaultRenderer);
         }
         TableColumn current = getColumnIfPresent(currentColumn);
         if (current != null) {
@@ -774,7 +886,8 @@ public class StockerTableView implements Disposable {
     }
 
     private void sortByColumn(int column) {
-        String columnName = tbBody.getColumnName(column);
+        int modelColumn = tbBody.convertColumnIndexToModel(column);
+        String columnName = modelColumn >= 0 ? tbModel.getColumnName(modelColumn) : tbBody.getColumnName(column);
 
         // Cycle through sort states: NONE -> ASCENDING -> DESCENDING -> NONE
         if (column == lastSortColumn) {
@@ -868,7 +981,8 @@ public class StockerTableView implements Disposable {
 
             int result = 0;
 
-            if (columnName.equals(codeColumn) || columnName.equals(nameColumn)) {
+            if (columnName.equals(codeColumn) || columnName.equals(nameColumn)
+                    || columnName.equals(industryColumn) || columnName.equals(boardColumn)) {
                 // Alphabetical sorting
                 String str1 = val1 != null ? val1.toString() : "";
                 String str2 = val2 != null ? val2.toString() : "";
@@ -918,6 +1032,17 @@ public class StockerTableView implements Disposable {
         }
     }
 
+    private static int modelRow(JTable table, int viewRow) {
+        if (viewRow < 0 || table.getRowSorter() == null) {
+            return viewRow;
+        }
+        try {
+            return table.convertRowIndexToModel(viewRow);
+        } catch (IndexOutOfBoundsException ex) {
+            return -1;
+        }
+    }
+
     private Double parseDouble(Object value) {
         if (value == null) {
             return null;
@@ -962,8 +1087,9 @@ public class StockerTableView implements Disposable {
                 if (table.getModel() instanceof DefaultTableModel) {
                     percentModelIndex = ((DefaultTableModel) table.getModel()).findColumn(percentColumn);
                 }
-                if (percentModelIndex != -1 && row >= 0 && row < table.getModel().getRowCount()) {
-                    Object percentValue = table.getModel().getValueAt(row, percentModelIndex);
+                int modelRow = modelRow(table, row);
+                if (percentModelIndex != -1 && modelRow >= 0 && modelRow < table.getModel().getRowCount()) {
+                    Object percentValue = table.getModel().getValueAt(modelRow, percentModelIndex);
                     if (percentValue != null) {
                         Double v = parsePercentage(percentValue.toString());
                         if (v != null) {
@@ -1071,8 +1197,9 @@ public class StockerTableView implements Disposable {
                 if (table.getModel() instanceof DefaultTableModel) {
                     currentModelIndex = ((DefaultTableModel) table.getModel()).findColumn(currentColumn);
                 }
-                if (currentModelIndex != -1 && row >= 0 && row < table.getModel().getRowCount()) {
-                    Object currentValue = table.getModel().getValueAt(row, currentModelIndex);
+                int modelRow = modelRow(table, row);
+                if (currentModelIndex != -1 && modelRow >= 0 && modelRow < table.getModel().getRowCount()) {
+                    Object currentValue = table.getModel().getValueAt(modelRow, currentModelIndex);
                     if (currentValue != null) {
                         Double currentPrice = parseDouble(currentValue);
                         if (currentPrice != null) {

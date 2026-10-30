@@ -12,6 +12,8 @@ import com.vermouthx.stocker.enums.StockerQuoteProvider
 import com.vermouthx.stocker.enums.StockerTableColumn
 import com.vermouthx.stocker.settings.StockerSetting
 import com.vermouthx.stocker.views.StockerTableView
+import com.vermouthx.stocker.views.dialogs.StockerAiSettingDialog
+import com.vermouthx.stocker.views.dialogs.StockerUsmartSettingDialog
 import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JLabel
@@ -27,6 +29,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
     private var languageOverride: String = setting.languageOverride
     private var showSymbol: Boolean = setting.isTableColumnVisible(StockerTableColumn.SYMBOL)
     private var showName: Boolean = setting.isTableColumnVisible(StockerTableColumn.NAME)
+    private var showIndustry: Boolean = setting.isTableColumnVisible(StockerTableColumn.INDUSTRY)
+    private var showBoard: Boolean = setting.isTableColumnVisible(StockerTableColumn.BOARD)
     private var showCurrent: Boolean = setting.isTableColumnVisible(StockerTableColumn.CURRENT)
     private var showOpening: Boolean = setting.isTableColumnVisible(StockerTableColumn.OPENING)
     private var showClose: Boolean = setting.isTableColumnVisible(StockerTableColumn.CLOSE)
@@ -40,6 +44,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
 
     private var symbolCheckBox: JCheckBox? = null
     private var nameCheckBox: JCheckBox? = null
+    private var industryCheckBox: JCheckBox? = null
+    private var boardCheckBox: JCheckBox? = null
     private var currentCheckBox: JCheckBox? = null
     private var openingCheckBox: JCheckBox? = null
     private var closeCheckBox: JCheckBox? = null
@@ -71,6 +77,15 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
         val languageRenderer = SimpleListCellRenderer.create<String>("") { languageDisplayName(it) }
 
         return panel {
+            group(StockerBundle.message("ai.settings.title")) {
+                row {
+                    button(StockerBundle.message("ai.settings.action")) {
+                        StockerAiSettingDialog(null).show()
+                    }
+                    comment(StockerBundle.message("ai.settings.comment"))
+                }
+            }
+
             group(StockerBundle.message("settings.group.general")) {
                 row {
                     label(StockerBundle.message("settings.language"))
@@ -103,6 +118,13 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                         .widthGroup("comboboxes")
                         .comment(StockerBundle.message("settings.crypto.quote.source.comment"))
                 }.layout(RowLayout.LABEL_ALIGNED)
+
+                row {
+                    button(StockerBundle.message("settings.usmart.action")) {
+                        StockerUsmartSettingDialog(null).show()
+                    }
+                    comment(StockerBundle.message("settings.usmart.comment"))
+                }
             }
 
             group(StockerBundle.message("settings.group.table.display")) {
@@ -156,6 +178,22 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                     row {
                         nameCheckBox = checkBox(StockerTableColumn.NAME.title)
                             .bindSelected(::showName.toMutableProperty())
+                            .applyToComponent {
+                                addItemListener { handleColumnToggle(this) }
+                            }
+                            .component
+                    }
+                    row {
+                        industryCheckBox = checkBox(StockerTableColumn.INDUSTRY.title)
+                            .bindSelected(::showIndustry.toMutableProperty())
+                            .applyToComponent {
+                                addItemListener { handleColumnToggle(this) }
+                            }
+                            .component
+                    }
+                    row {
+                        boardCheckBox = checkBox(StockerTableColumn.BOARD.title)
+                            .bindSelected(::showBoard.toMutableProperty())
                             .applyToComponent {
                                 addItemListener { handleColumnToggle(this) }
                             }
@@ -335,6 +373,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
                 languageOverride = setting.languageOverride
                 showSymbol = setting.isTableColumnVisible(StockerTableColumn.SYMBOL)
                 showName = setting.isTableColumnVisible(StockerTableColumn.NAME)
+                showIndustry = setting.isTableColumnVisible(StockerTableColumn.INDUSTRY)
+                showBoard = setting.isTableColumnVisible(StockerTableColumn.BOARD)
                 showCurrent = setting.isTableColumnVisible(StockerTableColumn.CURRENT)
                 showOpening = setting.isTableColumnVisible(StockerTableColumn.OPENING)
                 showClose = setting.isTableColumnVisible(StockerTableColumn.CLOSE)
@@ -356,6 +396,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
         val visibleColumns = mutableListOf<String>()
         if (showSymbol) visibleColumns.add(StockerTableColumn.SYMBOL.name)
         if (showName) visibleColumns.add(StockerTableColumn.NAME.name)
+        if (showIndustry) visibleColumns.add(StockerTableColumn.INDUSTRY.name)
+        if (showBoard) visibleColumns.add(StockerTableColumn.BOARD.name)
         if (showCurrent) visibleColumns.add(StockerTableColumn.CURRENT.name)
         if (showOpening) visibleColumns.add(StockerTableColumn.OPENING.name)
         if (showClose) visibleColumns.add(StockerTableColumn.CLOSE.name)
@@ -373,6 +415,8 @@ class StockerSettingWindow : BoundConfigurable(StockerBundle.message("plugin.nam
         val allCheckboxes = listOfNotNull(
             symbolCheckBox,
             nameCheckBox,
+            industryCheckBox,
+            boardCheckBox,
             currentCheckBox,
             openingCheckBox,
             closeCheckBox,

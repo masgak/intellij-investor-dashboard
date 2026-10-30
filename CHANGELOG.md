@@ -1,5 +1,105 @@
 # Changelog
 
+## 1.27.3
+
+### 🐛 Bug Fixes / 错误修复
+
+- Remove the automatic value-screen popup after scheduled screening; results still update in the Screen tab / 移除定时选股完成后的弹窗，筛选结果仍会更新到「选股」标签
+
+## 1.27.2
+
+### 🐛 Bug Fixes / 错误修复
+
+- Hide business sector and listing board columns on Hong Kong, US, and Crypto tabs instead of showing empty placeholders / 港股、美股、加密货币 Tab 不再显示业务板块与上市板块列
+
+## 1.27.1
+
+### ✨ New Features / 新功能
+
+- Paper trading shows cumulative P&L with percentage, applies A-share T+1 on sells, and adds a one-click paper buy action on the screen tab / 模拟交易累计盈亏显示百分比，A 股卖出遵循 T+1，选股页增加一键模拟购入
+
+### 🐛 Bug Fixes / 错误修复
+
+- Business sector and listing board columns show only for A-shares; Hong Kong and US rows display "-" / 业务板块与上市板块仅 A 股显示，港股和美股显示为「-」
+
+## 1.27.0
+
+### ✨ New Features / 新功能
+
+- Quote tables show each company's business sector, such as semiconductors or consumer electronics. A-shares also show the listing board: main board, ChiNext, STAR Market, or Beijing Stock Exchange / 行情表显示公司业务板块，例如半导体、消费电子。A 股同时显示上市板块：主板、创业板、科创板或北交所
+
+## 1.26.3
+
+### ✨ New Features / 新功能
+
+- Favorite tabs have a filter box that matches code, name, or pinyin / 自选页工具栏增加筛选框，可按代码、名称或拼音过滤
+
+## 1.26.2
+
+### 🐛 Bug Fixes / 错误修复
+
+- Quote tables open in watchlist order instead of sorting by change percent / 打开行情列表时按自选顺序显示，不再默认按涨幅排序
+
+## 1.26.1
+
+### 🐛 Bug Fixes / 错误修复
+
+- The paper-trade buy list shows company names / 模拟买入的下拉列表改为显示公司名
+
+## 1.26.0
+
+### ✨ New Features / 新功能
+
+- Added a paper-trading tab. Buys and sells use the latest quote, and each refresh shows today's change amount and percent against the simulated capital / 新增模拟买卖标签。按最新价买卖，行情刷新时根据模拟金额显示今日涨跌额和涨跌幅
+
+## 1.25.1
+
+### 🐛 Bug Fixes / 错误修复
+
+- Plugin HTTP calls connect directly and no longer follow the IDE system proxy / 插件的网络请求改为直连，不再走 IDE 的系统代理
+
+## 1.25.0
+
+### ✨ New Features / 新功能
+
+- The screened stock case is written by a configured OpenAI-compatible model. Base URL, API key, model list, and thinking level can be set from the screen toolbar or Stocker settings / 选股详情里的买卖理由改为由已配置的模型撰写。可在选股工具栏或 Stocker 设置中填写接口地址、API Key、模型列表和思考强度
+
+## 1.24.0
+
+### ✨ New Features / 新功能
+
+- Clicking a screened stock opens the buy or sell case, plus the company profile and the management team / 在选股结果里点击股票，可查看买入或卖出理由、公司介绍和高管团队
+
+## 1.23.1
+
+### 🐛 Bug Fixes / 错误修复
+
+- Daily backtests now load forward-adjusted bars from Tencent. One symbol that fails to download no longer cancels the rest of the favorites run / 日线回测改从腾讯拉前复权 K 线。单只下载失败不再中断其余自选的回测
+
+## 1.23.0
+
+### ✨ New Features / 新功能
+
+- Added a daily-bar backtest tab. Strategies run one bar at a time through an A-share broker, with buy-and-hold, moving-average cross, and turtle breakout / 新增日线回测标签。策略按 vn.py / backtrader 的方式逐根 K 线推进，内置买入持有、均线交叉和海龟突破，可回测单只股票或全部 A 股自选
+
+## 1.22.0
+
+### ✨ New Features / 新功能
+
+- The pre-open screen can switch among four published fundamental strategies: Tang Chao, Graham PE×PB, Greenblatt magic formula, and the investool quality filter / 开盘前选股可在四套公开策略间切换：老唐、格雷厄姆 PE×PB、格林布拉特神奇公式、investool 质量过滤
+
+## 1.21.1
+
+### 🐛 Bug Fixes / 错误修复
+
+- The value screen keeps the stock table as the main area. The screening rules open from the help button, and the daily switch sits on the status line / 选股页以表格为主。筛选规则改到帮助按钮里，每天自动筛选的开关放到状态栏
+
+## 1.21.0
+
+### ✨ New Features / 新功能
+
+- Added a pre-open A-share screen based on Tang Chao's Value Investing Handbook. It runs daily at 08:50 Beijing time and lists names that pass the quality filter, marked as buy, hold, or sell / 新增开盘前 A 股选股。按《价值投资实战手册》每天 8:50（北京时间）筛选，并标出理想买点、持有和卖出
+
 ## 1.20.2
 
 ### ✨ New Features / 新功能

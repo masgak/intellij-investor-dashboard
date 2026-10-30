@@ -8,6 +8,7 @@ import com.vermouthx.stocker.enums.StockerQuoteProvider
 import com.vermouthx.stocker.listeners.StockerQuoteReloadNotifier.*
 import com.vermouthx.stocker.listeners.StockerQuoteUpdateNotifier.*
 import com.vermouthx.stocker.settings.StockerSetting
+import com.vermouthx.stocker.utils.StockerProfileHttpUtil
 import com.vermouthx.stocker.utils.StockerQuoteHttpUtil
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -86,10 +87,10 @@ class StockerApp {
             val cryptoQuoteProvider = setting.cryptoQuoteProvider
 
             // Fetch all market data once
-            val aShareQuotes = fetchQuotesIfActive(StockerMarketType.AShare, quoteProvider, setting.aShareList) ?: return@Runnable
-            val hkStocksQuotes = fetchQuotesIfActive(StockerMarketType.HKStocks, quoteProvider, setting.hkStocksList) ?: return@Runnable
-            val usStocksQuotes = fetchQuotesIfActive(StockerMarketType.USStocks, quoteProvider, setting.usStocksList) ?: return@Runnable
-            val cryptoQuotes = fetchQuotesIfActive(StockerMarketType.Crypto, cryptoQuoteProvider, setting.cryptoList) ?: return@Runnable
+            val aShareQuotes = profile(StockerMarketType.AShare, fetchQuotesIfActive(StockerMarketType.AShare, quoteProvider, setting.aShareList)) ?: return@Runnable
+            val hkStocksQuotes = profile(StockerMarketType.HKStocks, fetchQuotesIfActive(StockerMarketType.HKStocks, quoteProvider, setting.hkStocksList)) ?: return@Runnable
+            val usStocksQuotes = profile(StockerMarketType.USStocks, fetchQuotesIfActive(StockerMarketType.USStocks, quoteProvider, setting.usStocksList)) ?: return@Runnable
+            val cryptoQuotes = profile(StockerMarketType.Crypto, fetchQuotesIfActive(StockerMarketType.Crypto, cryptoQuoteProvider, setting.cryptoList)) ?: return@Runnable
 
             val aShareIndices = fetchQuotesIfActive(StockerMarketType.AShare, quoteProvider, StockerMarketIndex.CN.codes) ?: return@Runnable
             val hkStocksIndices = fetchQuotesIfActive(StockerMarketType.HKStocks, quoteProvider, StockerMarketIndex.HK.codes) ?: return@Runnable
@@ -142,6 +143,13 @@ class StockerApp {
             return null
         }
         return StockerQuoteHttpUtil.get(marketType, quoteProvider, codes)
+    }
+
+    private fun profile(marketType: StockerMarketType, quotes: List<StockerQuote>?): List<StockerQuote>? {
+        if (quotes == null) {
+            return null
+        }
+        return StockerProfileHttpUtil.apply(marketType, quotes)
     }
 
     private fun shouldContinueRefresh(): Boolean {

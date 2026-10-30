@@ -19,6 +19,7 @@ object StockerQuoteParser {
         return when (provider) {
             StockerQuoteProvider.SINA -> parseSinaQuoteResponse(marketType, responseText)
             StockerQuoteProvider.TENCENT -> parseTencentQuoteResponse(marketType, responseText)
+            StockerQuoteProvider.USMART -> emptyList()
         }
     }
 

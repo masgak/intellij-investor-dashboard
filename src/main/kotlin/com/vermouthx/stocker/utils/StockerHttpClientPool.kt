@@ -3,7 +3,10 @@ package com.vermouthx.stocker.utils
 import com.intellij.openapi.diagnostic.Logger
 import org.apache.http.client.config.RequestConfig
 import org.apache.http.impl.client.CloseableHttpClient
+import org.apache.http.impl.client.HttpClientBuilder
 import org.apache.http.impl.client.HttpClients
+import org.apache.http.impl.conn.DefaultRoutePlanner
+import org.apache.http.impl.conn.DefaultSchemePortResolver
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
 
 internal class StockerHttpClientPool(
@@ -29,10 +32,9 @@ internal class StockerHttpClientPool(
             .setSocketTimeout(15000)
             .setConnectionRequestTimeout(5000)
             .build()
-        val httpClient = HttpClients.custom()
+        val httpClient = directClient()
             .setConnectionManager(connectionManager)
             .setDefaultRequestConfig(requestConfig)
-            .useSystemProperties()
             .build()
 
         this.connectionManager = connectionManager
@@ -51,5 +53,12 @@ internal class StockerHttpClientPool(
             .onFailure(log::warn)
         runCatching { manager?.shutdown() }
             .onFailure(log::warn)
+    }
+
+    companion object {
+        fun directClient(): HttpClientBuilder {
+            return HttpClients.custom()
+                .setRoutePlanner(DefaultRoutePlanner(DefaultSchemePortResolver.INSTANCE))
+        }
     }
 }

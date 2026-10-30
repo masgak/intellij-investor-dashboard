@@ -6,6 +6,8 @@ import java.util.*
 enum class StockerTableColumn(val titleKey: String) {
     SYMBOL("column.symbol"),
     NAME("column.name"),
+    INDUSTRY("column.industry"),
+    BOARD("column.board"),
     CURRENT("column.current"),
     OPENING("column.opening"),
     CLOSE("column.close"),
@@ -27,6 +29,8 @@ enum class StockerTableColumn(val titleKey: String) {
         @JvmStatic
         fun defaultVisibleNames(): List<String> = listOf(
             NAME.name,
+            INDUSTRY.name,
+            BOARD.name,
             CURRENT.name,
             CHANGE_PERCENT.name
         )

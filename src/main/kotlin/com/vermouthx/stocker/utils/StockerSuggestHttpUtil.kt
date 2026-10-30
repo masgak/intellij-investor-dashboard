@@ -30,14 +30,15 @@ object StockerSuggestHttpUtil {
         provider: StockerQuoteProvider,
         marketTypeFilter: Set<StockerMarketType>? = null
     ): List<StockerSuggestion> {
-        val url = "${provider.suggestHost}$key"
+        val providerForSearch = if (provider == StockerQuoteProvider.USMART) StockerQuoteProvider.SINA else provider
+        val url = "${providerForSearch.suggestHost}$key"
         val httpGet = HttpGet(url)
-        if (provider == StockerQuoteProvider.SINA) {
+        if (providerForSearch == StockerQuoteProvider.SINA) {
             httpGet.setHeader("Referer", "https://finance.sina.com.cn") // Sina API requires this header
         }
         return try {
             httpClientPool.client().execute(httpGet).use { response ->
-                val allSuggestions = when (provider) {
+                val allSuggestions = when (providerForSearch) {
                     StockerQuoteProvider.SINA -> {
                         val responseText = EntityUtils.toString(response.entity, "UTF-8")
                         parseSinaSuggestion(responseText)
@@ -47,6 +48,8 @@ object StockerSuggestHttpUtil {
                         val responseText = EntityUtils.toString(response.entity, "UTF-8")
                         parseTencentSuggestion(responseText)
                     }
+
+                    StockerQuoteProvider.USMART -> emptyList()
                 }
                 
                 // Apply market type filter if specified

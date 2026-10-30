@@ -61,26 +61,32 @@ public class StockerQuoteUpdateListener implements StockerQuoteUpdateNotifier {
                 Integer rowIndexObj = rowIndexByCode.get(quote.getCode());
                 if (rowIndexObj != null) {
                     int rowIndex = rowIndexObj;
-                    setIfChanged(tableModel, rowIndex, 1, displayName);
-                    setIfChanged(tableModel, rowIndex, 2, quote.getCurrent());
-                    setIfChanged(tableModel, rowIndex, 3, quote.getOpening());
-                    setIfChanged(tableModel, rowIndex, 4, quote.getClose());
-                    setIfChanged(tableModel, rowIndex, 5, quote.getLow());
-                    setIfChanged(tableModel, rowIndex, 6, quote.getHigh());
-                    setIfChanged(tableModel, rowIndex, 7, quote.getChange());
-                    setIfChanged(tableModel, rowIndex, 8, quote.getPercentage() + "%");
+                    if (displayName != null && !displayName.isEmpty()) {
+                        setIfChanged(tableModel, rowIndex, 1, displayName);
+                    }
+                    setIfChanged(tableModel, rowIndex, 2, displayText(quote.getIndustry()));
+                    setIfChanged(tableModel, rowIndex, 3, displayText(quote.getBoard()));
+                    setIfChanged(tableModel, rowIndex, 4, quote.getCurrent());
+                    setIfChanged(tableModel, rowIndex, 5, quote.getOpening());
+                    setIfChanged(tableModel, rowIndex, 6, quote.getClose());
+                    setIfChanged(tableModel, rowIndex, 7, quote.getLow());
+                    setIfChanged(tableModel, rowIndex, 8, quote.getHigh());
+                    setIfChanged(tableModel, rowIndex, 9, quote.getChange());
+                    setIfChanged(tableModel, rowIndex, 10, quote.getPercentage() + "%");
 
                     Double costPrice = setting.getCostPrice(quote.getCode());
                     Integer holdings = setting.getHoldings(quote.getCode());
-                    setIfChanged(tableModel, rowIndex, 9, formatCostPrice(costPrice));
-                    setIfChanged(tableModel, rowIndex, 10, formatHoldings(holdings));
-                    setIfChanged(tableModel, rowIndex, 11, formatNetProfit(quote, costPrice, holdings));
+                    setIfChanged(tableModel, rowIndex, 11, formatCostPrice(costPrice));
+                    setIfChanged(tableModel, rowIndex, 12, formatHoldings(holdings));
+                    setIfChanged(tableModel, rowIndex, 13, formatNetProfit(quote, costPrice, holdings));
                 } else if (quotes.size() == size) {
                     Double costPrice = setting.getCostPrice(quote.getCode());
                     Integer holdings = setting.getHoldings(quote.getCode());
                     tableModel.addRow(new Object[]{
                             quote.getCode(),
                             displayName,
+                            displayText(quote.getIndustry()),
+                            displayText(quote.getBoard()),
                             quote.getCurrent(),
                             quote.getOpening(),
                             quote.getClose(),
@@ -101,6 +107,10 @@ public class StockerQuoteUpdateListener implements StockerQuoteUpdateNotifier {
         if (structureChanged) {
             myTableView.reapplySortAfterDataChange();
         }
+    }
+
+    private static String displayText(String value) {
+        return value == null || value.isEmpty() ? "-" : value;
     }
 
     private static void setIfChanged(DefaultTableModel tableModel, int row, int column, Object newValue) {

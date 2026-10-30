@@ -5,10 +5,12 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.vermouthx.stocker.StockerMeta
 import com.vermouthx.stocker.notifications.StockerNotification
+import com.vermouthx.stocker.screen.StockerScreenService
 import com.vermouthx.stocker.settings.StockerSetting
 
 class StockerStartupActivity : ProjectActivity, DumbAware {
     override suspend fun execute(project: Project) {
+        StockerScreenService.instance
         val settings = StockerSetting.instance
         if (settings.version.isEmpty()) {
             settings.version = StockerMeta.currentVersion

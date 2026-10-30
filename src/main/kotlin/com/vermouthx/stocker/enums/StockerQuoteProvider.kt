@@ -32,6 +32,21 @@ enum class StockerQuoteProvider(
             StockerMarketType.HKStocks to "hk",
             StockerMarketType.USStocks to "us",
         )
+    ),
+
+    /**
+     * uSMART Open API. Quotes require an approved channel, keys, and a login token.
+     * Crypto is not served here; search falls back to Sina.
+     */
+    USMART(
+        titleKey = "provider.usmart",
+        host = "https://open-hz.yxzq.com:8443",
+        suggestHost = "https://suggest3.sinajs.cn/suggest/key=",
+        providerPrefixMap = mapOf(
+            StockerMarketType.AShare to "",
+            StockerMarketType.HKStocks to "hk",
+            StockerMarketType.USStocks to "us",
+        )
     );
 
     val title: String
@@ -42,6 +57,7 @@ enum class StockerQuoteProvider(
             return when (title) {
                 SINA.title -> SINA
                 TENCENT.title -> TENCENT
+                USMART.title -> USMART
                 else -> SINA
             }
         }

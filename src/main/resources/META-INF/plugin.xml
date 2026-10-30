@@ -7,6 +7,7 @@
     <depends>com.intellij.modules.platform</depends>
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="com.vermouthx.stocker.settings.StockerSetting"/>
+        <applicationService serviceImplementation="com.vermouthx.stocker.screen.StockerScreenService"/>
         <postStartupActivity implementation="com.vermouthx.stocker.activities.StockerStartupActivity"/>
         <notificationGroup displayType="STICKY_BALLOON" id="Stocker" isLogByDefault="true"/>
         <toolWindow id="Stocker" anchor="left" icon="/icons/logo.png" secondary="true"
@@ -63,6 +64,13 @@
                     text="%action.manage.groups"
                     description="%action.manage.groups.description"
                     icon="AllIcons.Actions.GroupBy">
+            </action>
+            <separator/>
+            <action class="com.vermouthx.stocker.actions.StockerScreenAction"
+                    id="com.vermouthx.stocker.actions.StockerScreenAction"
+                    text="%screen.action.open"
+                    description="%screen.action.open.description"
+                    icon="AllIcons.Actions.Find">
             </action>
         </group>
     </actions>

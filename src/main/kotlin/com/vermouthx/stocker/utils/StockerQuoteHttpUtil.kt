@@ -22,6 +22,9 @@ object StockerQuoteHttpUtil {
         if (codes.isEmpty()) {
             return emptyList()
         }
+        if (quoteProvider == StockerQuoteProvider.USMART) {
+            return UsmartQuoteClient.quotes(marketType, codes)
+        }
         
         // Validate provider supports market type
         val prefix = quoteProvider.providerPrefixMap[marketType]
@@ -56,6 +59,8 @@ object StockerQuoteHttpUtil {
                     }
                 }
             }
+
+            StockerQuoteProvider.USMART -> ""
         }
 
         val url = "${quoteProvider.host}${codesParam}"
@@ -78,6 +83,9 @@ object StockerQuoteHttpUtil {
         marketType: StockerMarketType, quoteProvider: StockerQuoteProvider, code: String
     ): Boolean {
         return try {
+            if (quoteProvider == StockerQuoteProvider.USMART) {
+                return UsmartQuoteClient.reachable(marketType, code)
+            }
             // Validate provider supports market type
             val prefix = quoteProvider.providerPrefixMap[marketType]
             if (prefix == null) {
@@ -120,6 +128,8 @@ object StockerQuoteHttpUtil {
                         !responseText.startsWith("v_pv_none_match")
                     }
                 }
+
+                StockerQuoteProvider.USMART -> false
             }
         } catch (e: Exception) {
             log.warn(e)
